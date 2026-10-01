@@ -26,9 +26,14 @@ def create_app():
                 app.logger.warning(
                     "Neon Postgres unreachable. Falling back to local SQLite (instance/tms.db)."
                 )
-                app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "..", "instance", "tms.db"
+                db_path = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "..",
+                    "instance",
+                    "tms.db",
                 ).replace("\\", "/")
+                os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
                 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
 
     db.init_app(app)
