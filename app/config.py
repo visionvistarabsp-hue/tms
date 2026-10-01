@@ -1,20 +1,38 @@
 import os
 import time
+from urllib.parse import urlsplit, urlunsplit
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# SQLAlchemy 2.x resolves a bare "postgresql://" URL to the psycopg2 dialect.
+# We run psycopg 3 (psycopg[binary]), which ships prebuilt wheels that work on
+# serverless Lambda, so the dialect is pinned explicitly instead of guessed.
+PG_DIALECT = "postgresql+psycopg"
 
 
 def _is_postgres(url):
     return bool(url) and url.startswith("postgres")
 
 
+def normalize_db_url(url):
+    """Pin a bare postgres URL to the psycopg3 dialect, leaving any explicit
+    driver suffix (or a non-postgres URL such as sqlite) untouched."""
+    if not _is_postgres(url):
+        return url
+    parts = urlsplit(url)
+    if "+" in parts.scheme:
+        return url
+    return urlunsplit((PG_DIALECT, parts.netloc, parts.path, parts.query, parts.fragment))
+
+
 def make_pg_creator(url=None):
     """Return a pooled-connection creator that retries transient
     DNS/network failures (e.g. Neon pooler host flapping) up to 5 times."""
-    import psycopg2
+    import psycopg
 
-    url = url or os.getenv("DATABASE_URL", "")
+    url = normalize_db_url(url or os.getenv("DATABASE_URL", ""))
     attempts = 5
     backoff_secs = [0.5, 1, 2, 3, 3]
 
@@ -22,7 +40,7 @@ def make_pg_creator(url=None):
         last_err = None
         for i in range(attempts):
             try:
-                return psycopg2.connect(url, connect_timeout=10)
+                return psycopg.connect(url, connect_timeout=10)
             except Exception as exc:  # noqa: BLE001 - retry any transient connect error
                 last_err = exc
                 time.sleep(backoff_secs[i] if i < len(backoff_secs) else 3)
@@ -33,14 +51,14 @@ def make_pg_creator(url=None):
 
 def postgres_reachable(url=None, retries=3):
     """Quick startup check: can we actually open a Postgres connect?"""
-    import psycopg2
+    import psycopg
 
-    url = url or os.getenv("DATABASE_URL", "")
+    url = normalize_db_url(url or os.getenv("DATABASE_URL", ""))
     if not _is_postgres(url):
         return True
     for i in range(retries):
         try:
-            conn = psycopg2.connect(url, connect_timeout=10)
+            conn = psycopg.connect(url, connect_timeout=10)
             conn.close()
             return True
         except Exception:  # noqa: BLE001
@@ -49,7 +67,9 @@ def postgres_reachable(url=None, retries=3):
 
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///tms.db")
+    SQLALCHEMY_DATABASE_URI = normalize_db_url(
+        os.getenv("DATABASE_URL", "sqlite:///tms.db")
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
