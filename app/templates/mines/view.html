@@ -1,0 +1,79 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-geo-alt me-1"></i> {{ mine.name }}</h3>
+        <div class="subtitle">
+            Plant: <strong>{{ mine.plant.name if mine.plant else 'N/A' }}</strong>
+            &middot; Total Work Orders: <strong>{{ work_orders|length }}</strong>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('work_order_records.add', next=request.url, mine_id=mine.id) }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Add Work Order</a>
+        <a href="{{ url_for('mines.list', plant_id=mine.plant_id) }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    </div>
+</div>
+
+{% if work_orders %}
+<div class="row g-2 mb-3">
+    <div class="col-md-2 col-6">
+        <div class="card text-center py-2">
+            <div class="small text-muted">Total Freight</div>
+            <strong style="color:var(--primary);">&#8377; {{ "%.0f"|format(work_orders|sum(attribute='total_freight')) }}</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-6">
+        <div class="card text-center py-2">
+            <div class="small text-muted">Total Cash</div>
+            <strong>&#8377; {{ "%.0f"|format(work_orders|sum(attribute='cash')) }}</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-6">
+        <div class="card text-center py-2">
+            <div class="small text-muted">Total Balance</div>
+            <strong style="color:var(--warning);">&#8377; {{ "%.0f"|format(work_orders|sum(attribute='balance')) }}</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-6">
+        <div class="card text-center py-2">
+            <div class="small text-muted">PENDING</div>
+            <strong>{{ work_orders|selectattr('status', 'equalto', 'PENDING')|list|length }}</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-6">
+        <div class="card text-center py-2">
+            <div class="small text-muted">COMPLETED</div>
+            <strong>{{ work_orders|selectattr('status', 'equalto', 'COMPLETED')|list|length }}</strong>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for wo in work_orders %}
+    <div class="col-md-4 col-lg-3">
+        <a href="{{ url_for('work_order_records.view', id=wo.id) }}" class="text-decoration-none">
+            <div class="card h-100" style="cursor:pointer;transition:transform .15s;border-left:4px solid {% if wo.status == 'COMPLETED' %}var(--success){% else %}var(--warning){% endif %};">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-1" style="color:var(--primary);">{{ wo.work_order_number or ('#' ~ wo.id) }}</h5>
+                        <span class="badge-status {{ 'completed' if wo.status == 'COMPLETED' else 'pending' }}" style="font-size:.7rem;">{{ wo.status }}</span>
+                    </div>
+                    <div class="small text-muted">{{ wo.date|dt }}</div>
+                    <div class="fw-bold mt-1">{{ wo.lorry_number }}</div>
+                    <div class="small mt-2">&#8377; {{ "%.0f"|format(wo.total_freight) }} | Bal: &#8377; {{ "%.0f"|format(wo.balance) }}</div>
+                    <div class="small text-muted">{{ wo.account_name or '-' }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="icon"><i class="bi bi-file-earmark-text"></i></div>
+    <h5>No work orders yet</h5>
+    <p>This mine has no work order records.</p>
+    <a href="{{ url_for('work_order_records.add', next=request.url, mine_id=mine.id) }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Create First Work Order</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-geo-alt me-1"></i> Mines</h3>
+        <div class="subtitle">
+            {% if plant %}
+                Filtered by Plant: <strong>{{ plant.name }}</strong>
+                <a href="{{ url_for('mines.list') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-x-circle"></i> Clear Filter</a>
+            {% else %}
+                Manage mine names
+            {% endif %}
+        </div>
+    </div>
+    <a href="{{ url_for('mines.add') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Add Mine</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0 me-2"><strong>Filter by Plant:</strong></label>
+            <select name="plant_id" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                <option value="">All Plants</option>
+                {% for p in plants %}
+                <option value="{{ p.id }}" {% if plant_id == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Mine Name</th>
+                {% if not plant %}<th>Plant</th>{% endif %}
+                <th>Work Order Numbers</th>
+                <th class="no-print text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in mines %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ m.name }}</strong></td>
+                {% if not plant %}<td>{{ m.plant.name if m.plant else '-' }}</td>{% endif %}
+                <td>
+                    {% set ns = namespace(seen=[], has_any=false) %}
+                    {% for wo in m.work_orders %}
+                        {% set wnum = wo.work_order_number if wo.work_order_number and wo.work_order_number != 'None' else 'WO-' ~ wo.id %}
+                        {% if wnum not in ns.seen %}
+                            {% set ns.seen = ns.seen + [wnum] %}
+                            <a href="{{ url_for('work_order_records.view', id=wo.id) }}" class="badge bg-primary-subtle text-primary text-decoration-none me-1 mb-1" style="font-size:0.72rem;">{{ wnum }}</a>
+                            {% set ns.has_any = true %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if not ns.has_any %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="no-print text-end">
+                    <div class="action-group justify-content-end">
+                        <a href="{{ url_for('mines.view', id=m.id) }}" class="btn btn-sm btn-outline-info" title="View"><i class="bi bi-eye"></i></a>
+                        <a href="{{ url_for('mines.edit', id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <form method="POST" action="{{ url_for('mines.delete', id=m.id) }}" style="display:inline;" onsubmit="return confirm('Delete this mine?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty-state"><div class="icon"><i class="bi bi-geo-alt"></i></div>No mines found</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

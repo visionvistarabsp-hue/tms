@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3>{% if expense %}Edit Expense{% else %}Add Expense{% endif %}</h3>
+    <div class="subtitle">Trip: <strong>{{ trip.lorry_number }}</strong> &middot; {{ trip.date|dt }}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-truck me-1"></i> Trip Financials</div>
+            <div class="card-body">
+                <form method="POST" id="expenseForm">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Total Freight (&#8377;) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">&#8377;</span>
+                                <input type="number" step="0.01" min="0" name="total_freight" id="totalFreight" class="form-control" value="{{ trip.total_freight if trip.total_freight else '' }}" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">TDS (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" name="tds_percent" id="tdsPercent" class="form-control" value="{{ trip.tds_percent if trip.tds_percent else '1.00' }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">TDS Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">&#8377;</span>
+                                <input type="text" id="tdsAmount" class="form-control" readonly style="background:var(--bg-input);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="section-title" style="font-size:.9rem;"><i class="bi bi-receipt me-1"></i> Expense Details</div>
+                    <div class="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-2" style="background:var(--info-subtle);border-left:4px solid var(--info);">
+                        <i class="bi bi-info-circle" style="color:var(--info);"></i>
+                        <span style="font-size:.85rem;color:var(--text);">Current balance before expense: <strong>&#8377; {{ "%.2f"|format(trip.balance) }}</strong></span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Description <span class="text-danger">*</span></label>
+                            <input type="text" name="description" class="form-control" value="{{ expense.description if expense else '' }}" placeholder="e.g. Registration Fee" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Amount (&#8377;) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">&#8377;</span>
+                                <input type="number" step="0.01" min="0" name="amount" class="form-control" value="{{ expense.amount if expense else '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="section-title" style="font-size:.9rem;"><i class="bi bi-file-earmark-text me-1"></i> Declaration</div>
+                    <div class="p-3 rounded-2" style="background:var(--bg);font-size:.85rem;line-height:1.6;">
+                        <p class="mb-2"><strong>Declaration by Transporter:</strong></p>
+                        <p class="mb-2">I hereby declare that the above particulars are correct to the best of my knowledge and belief. I accept that any discrepancy found later shall be subject to correction and applicable deductions.</p>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Transporter Name</label>
+                                <input type="text" class="form-control" value="{{ trip.transporter.name if trip.transporter else '' }}" readonly style="background:var(--bg-input);">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="text" class="form-control" value="{{ trip.date|dt }}" readonly style="background:var(--bg-input);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save</button>
+                        <a href="{{ url_for('trips.view', id=trip.id) }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i> Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calcTDS() {
+    var freight = parseFloat(document.getElementById('totalFreight').value) || 0;
+    var pct = parseFloat(document.getElementById('tdsPercent').value) || 0;
+    var tds = (freight * pct / 100).toFixed(2);
+    document.getElementById('tdsAmount').value = '\u20B9 ' + tds;
+}
+document.getElementById('totalFreight').addEventListener('input', calcTDS);
+document.getElementById('tdsPercent').addEventListener('input', calcTDS);
+calcTDS();
+</script>
+{% endblock %}

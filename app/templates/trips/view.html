@@ -1,0 +1,139 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-journal me-1"></i> Trip Details</h3>
+        <div class="subtitle">{{ trip.lorry_number }} &middot; {{ trip.date|dt }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('trips.edit', id=trip.id) }}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i> Edit</a>
+        <a href="{{ url_for('trips.list') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-info-circle me-1"></i> Trip Info</div>
+            <div class="card-body">
+                <table class="detail-table w-100">
+                    <tr><th>Date</th><td>{{ trip.date|dt }}</td></tr>
+                    <tr><th>Truck Number</th><td><strong>{{ trip.lorry_number }}</strong></td></tr>
+                    <tr><th>Mine</th><td><strong>{{ trip.mine.name if trip.mine else '-' }}</strong></td></tr>
+                    <tr><th>Mines Name</th><td><strong>{{ trip.mine.name if trip.mine else '-' }}</strong></td></tr>
+                    <tr><th>Mines Qty</th><td>{{ trip.mines_qty or '-' }} Tonnes</td></tr>
+                    <tr><th>Plant</th><td><strong>{{ trip.plant.name if trip.plant else 'N/A' }}</strong></td></tr>
+                    <tr><th>Transporter</th><td><strong>{{ trip.transporter.name if trip.transporter else 'N/A' }}</strong></td></tr>
+                    <tr><th>Status</th>
+                        <td>
+                            <span class="badge-status {{ 'completed' if trip.status == 'COMPLETED' else 'pending' }}">
+                                {{ trip.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr><th>Remarks</th><td>{{ trip.remarks or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-calculator me-1"></i> Financial Summary</div>
+            <div class="card-body">
+                <table class="detail-table w-100">
+                    <tr class="financial-row freight"><th>Total Freight</th><td class="text-end">&#8377; {{ "%.2f"|format(trip.total_freight) }}</td></tr>
+                    <tr class="financial-row tds"><th>TDS ({{ trip.tds_percent }}%)</th><td class="text-end">- &#8377; {{ "%.2f"|format(trip.tds_amount) }}</td></tr>
+                    <tr class="financial-row expense"><th>Total Expenses</th><td class="text-end">- &#8377; {{ "%.2f"|format(trip.total_expense) }}</td></tr>
+                    <tr class="financial-row paid"><th>Total Paid</th><td class="text-end">- &#8377; {{ "%.2f"|format(trip.total_paid) }}</td></tr>
+                    <tr class="financial-row balance"><th>Balance</th><td class="text-end">&#8377; {{ "%.2f"|format(trip.balance) }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-2">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-receipt me-1"></i> Expenses</span>
+                <a href="{{ url_for('expenses.add', trip_id=trip.id) }}" class="btn btn-sm btn-primary"><i class="bi bi-plus me-1"></i> Add</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Description</th>
+                            <th class="text-end">Amount</th>
+                            <th class="no-print text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in trip.expenses %}
+                        <tr>
+                            <td class="text-muted">{{ e.id }}</td>
+                            <td>{{ e.description }}</td>
+                            <td class="text-end">&#8377; {{ "%.2f"|format(e.amount) }}</td>
+                            <td class="no-print text-end">
+                                <div class="action-group justify-content-end">
+                                    <a href="{{ url_for('expenses.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form method="POST" action="{{ url_for('expenses.delete', id=e.id) }}" style="display:inline;" onsubmit="return confirm('Delete this expense?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="empty-state"><div class="icon"><i class="bi bi-receipt-cutoff"></i></div>No expenses added</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-credit-card-2-front me-1"></i> Payments</span>
+                <a href="{{ url_for('payments.add', trip_id=trip.id) }}" class="btn btn-sm btn-primary"><i class="bi bi-plus me-1"></i> Add</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Method</th>
+                            <th class="text-end">Amount</th>
+                            <th>Date</th>
+                            <th>Ref</th>
+                            <th class="no-print text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in trip.payments %}
+                        <tr>
+                            <td class="text-muted">{{ p.id }}</td>
+                            <td><span class="badge-method {{ p.payment_method.lower() }}">{{ p.payment_method }}</span></td>
+                            <td class="text-end">&#8377; {{ "%.2f"|format(p.amount) }}</td>
+                            <td>{{ p.execution_date }}</td>
+                            <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;">{{ p.reference_number or '-' }}</td>
+                            <td class="no-print text-end">
+                                <div class="action-group justify-content-end">
+                                    <a href="{{ url_for('payments.edit', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form method="POST" action="{{ url_for('payments.delete', id=p.id) }}" style="display:inline;" onsubmit="return confirm('Delete this payment?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="empty-state"><div class="icon"><i class="bi bi-credit-card-2-front"></i></div>No payments made</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

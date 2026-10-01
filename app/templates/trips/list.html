@@ -1,0 +1,105 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-journal me-1"></i> Trips</h3>
+        <div class="subtitle">Manage and track all lorry trips</div>
+    </div>
+    <a href="{{ url_for('trips.add') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> New Trip</a>
+</div>
+
+<div class="filter-card">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small mb-1">From</label>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">To</label>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Truck</label>
+            <input type="text" name="lorry" class="form-control" placeholder="Truck number" value="{{ lorry }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Plant</label>
+            <select name="plant_id" class="form-select">
+                <option value="">All</option>
+                {% for p in plants %}
+                <option value="{{ p.id }}" {% if plant_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                <option value="PENDING" {% if status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                <option value="COMPLETED" {% if status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+            </select>
+        </div>
+        <div class="col-auto d-flex gap-1">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i> Filter</button>
+            <a href="{{ url_for('trips.list') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i></a>
+        </div>
+    </form>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Truck</th>
+                        <th>Work Order</th>
+                        <th>Mines</th>
+                        <th>Plant</th>
+                        <th>Transporter</th>
+                        <th class="text-end">Freight</th>
+                        <th class="text-end">TDS</th>
+                        <th class="text-end">Expense</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Balance</th>
+                        <th>Status</th>
+                        <th class="no-print text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trips %}
+                    <tr>
+                        <td>{{ t.date|dt }}</td>
+                        <td><strong>{{ t.lorry_number }}</strong></td>
+                        <td><code>{{ t.mine.name if t.mine else '-' }}</code></td>
+                        <td>{{ t.mine.name if t.mine else '-' }}</td>
+                        <td><span class="badge-method neft">{{ t.plant.name if t.plant else 'N/A' }}</span></td>
+                        <td>{{ t.transporter.name if t.transporter else 'N/A' }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_freight) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.tds_amount) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_expense) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_paid) }}</td>
+                        <td class="text-end"><strong>&#8377; {{ "%.2f"|format(t.balance) }}</strong></td>
+                        <td>
+                            <span class="badge-status {{ 'completed' if t.status == 'COMPLETED' else 'pending' }}">
+                                {{ t.status }}
+                            </span>
+                        </td>
+                        <td class="no-print text-end">
+                            <div class="action-group justify-content-end">
+                                <a href="{{ url_for('trips.view', id=t.id) }}" class="btn btn-sm btn-outline-info" title="View"><i class="bi bi-eye"></i></a>
+                                <a href="{{ url_for('trips.edit', id=t.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <form method="POST" action="{{ url_for('trips.delete', id=t.id) }}" style="display:inline;" onsubmit="return confirm('Delete this trip?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="13" class="empty-state"><div class="icon"><i class="bi bi-inbox"></i></div>No trips found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+</div>
+
+{% include "_pagination.html" %}
+{% endblock %}

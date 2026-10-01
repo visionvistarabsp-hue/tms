@@ -1,0 +1,76 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-journal-text me-1"></i> Trip-wise Report</h3>
+        <div class="subtitle">Detailed trip summary with filters</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.trip_wise', date_from=date_from, date_to=date_to, export='xlsx') }}" class="btn btn-primary"><i class="bi bi-download me-1"></i> Export XLSX</a>
+        <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    </div>
+</div>
+
+<div class="filter-card">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small mb-1">From</label>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">To</label>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i> Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Truck</th>
+                        <th>Work Order</th>
+                        <th>Mines</th>
+                        <th>Plant</th>
+                        <th>Transporter</th>
+                        <th class="text-end">Freight</th>
+                        <th class="text-end">TDS%</th>
+                        <th class="text-end">TDS Amt</th>
+                        <th class="text-end">Expense</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Balance</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trips %}
+                    <tr>
+                        <td>{{ t.date|dt }}</td>
+                        <td><strong>{{ t.lorry_number }}</strong></td>
+                        <td><code>{{ t.mine.name if t.mine else '-' }}</code></td>
+                        <td>{{ t.mine.name if t.mine else '-' }}</td>
+                        <td><span class="badge-method neft">{{ t.plant.name if t.plant else '' }}</span></td>
+                        <td>{{ t.transporter.name if t.transporter else '' }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_freight) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(t.tds_percent) }}%</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.tds_amount) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_expense) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(t.total_paid) }}</td>
+                        <td class="text-end"><strong>&#8377; {{ "%.2f"|format(t.balance) }}</strong></td>
+                        <td>
+                            <span class="badge-status {{ 'completed' if t.status == 'COMPLETED' else 'pending' }}">
+                                {{ t.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="13" class="empty-state"><div class="icon"><i class="bi bi-inbox"></i></div>No data found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+</div>
+{% endblock %}

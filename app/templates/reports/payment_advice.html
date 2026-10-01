@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center no-print">
+    <div>
+        <h3><i class="bi bi-receipt me-1"></i> Payment Advice</h3>
+        <div class="subtitle">Account &rarr; Truck &rarr; Date filter ke saath account-wise bill / payment advice</div>
+    </div>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+</div>
+
+<div class="card mb-3 no-print">
+    <div class="card-body py-3">
+        <form method="GET" id="paForm" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label"><strong>1. Account Name</strong></label>
+                <select name="account" id="accountSelect" class="form-select" onchange="loadTrucks()">
+                    <option value="">-- Select Account --</option>
+                    {% for a in accounts %}
+                    <option value="{{ a }}" {{ 'selected' if account == a else '' }}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>2. Truck Number</strong> <span class="text-muted">(multiple select)</span></label>
+                <select name="trucks" id="truckSelect" class="form-select" multiple size="5" onchange="loadDates()">
+                    {% if account %}
+                        {% for t in trucks %}
+                        <option value="{{ t }}" selected>{{ t }}</option>
+                        {% endfor %}
+                    {% else %}
+                    <option value="">-- Pehle account select karein --</option>
+                    {% endif %}
+                </select>
+                <div class="form-text">Ctrl/Cmd ya Shift se multiple truck select karein</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>3. Date</strong> <span class="text-muted">(multiple select)</span></label>
+                <select name="dates" id="dateSelect" class="form-select" multiple size="5">
+                    {% if account and trucks %}
+                        {% for d in dates %}
+                        <option value="{{ d }}" selected>{{ d }}</option>
+                        {% endfor %}
+                    {% else %}
+                    <option value="">-- Pehle truck select karein --</option>
+                    {% endif %}
+                </select>
+                <div class="form-text">Ctrl/Cmd ya Shift se multiple date select karein</div>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-receipt me-1"></i> Generate Advice</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()"><i class="bi bi-arrow-repeat me-1"></i> Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if advice %}
+<div class="d-flex justify-content-end gap-2 mb-2 no-print">
+    <a href="{{ url_for('reports.payment_advice', account=advice.account, trucks=trucks|join(','), dates=dates|join(','), export='xlsx') }}" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-spreadsheet me-1"></i> XLSX</a>
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+</div>
+
+<div class="advice-sheet">
+    <div class="advice-header">
+        <h2 class="advice-company">SHYAM BUILDCON PVT LTD</h2>
+        <div class="advice-title">PAYMENT ADVICE</div>
+    </div>
+
+    <div class="advice-meta">
+        <div><strong>Account Name:</strong> {{ advice.account }}</div>
+        <div><strong>Truck(s):</strong> {{ trucks|join(', ') if trucks else 'All' }}</div>
+        <div><strong>Date(s):</strong> {{ dates|join(', ') if dates else 'All' }}</div>
+        <div><strong>Total Records:</strong> {{ advice.rows|length }}</div>
+        <div><strong>Date:</strong> {{ today }}</div>
+    </div>
+
+    <table class="advice-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Truck #</th>
+                <th>Mine</th>
+                <th>Mines Qty</th>
+                <th>Plant Qty</th>
+                <th>Rate</th>
+                <th>Freight</th>
+                <th>Advance</th>
+                <th>Short Qty</th>
+                <th>Short Amt</th>
+                <th>Munsiyana</th>
+                <th>TDS</th>
+                <th>Balance</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in advice.rows %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ r.date }}</td>
+                <td>{{ r.lorry_number }}</td>
+                <td>{{ r.mine_name }}</td>
+                <td class="num">{{ "%.1f"|format(r.mines_qty) }}</td>
+                <td class="num">{{ "%.1f"|format(r.plant_qty) }}</td>
+                <td class="num">{{ "%.0f"|format(r.rate) }}</td>
+                <td class="num">{{ "%.0f"|format(r.freight) }}</td>
+                <td class="num">{{ "%.0f"|format(r.advance) }}</td>
+                <td class="num">{{ "%.1f"|format(r.shortage) }}</td>
+                <td class="num">{{ "%.0f"|format(r.short_amt) }}</td>
+                <td class="num">{{ "%.0f"|format(r.munsiyana) }}</td>
+                <td class="num">{{ "%.0f"|format(r.tds) }}</td>
+                <td class="num">{{ "%.0f"|format(r.balance) }}</td>
+                <td>{{ r.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% if advice.rows %}
+        <tfoot>
+            <tr>
+                <th colspan="4">TOTAL</th>
+                <th class="num">{{ "%.1f"|format(advice.totals.mines_qty) }}</th>
+                <th class="num">{{ "%.1f"|format(advice.totals.plant_qty) }}</th>
+                <th></th>
+                <th class="num">{{ "%.0f"|format(advice.totals.freight) }}</th>
+                <th class="num">{{ "%.0f"|format(advice.totals.advance) }}</th>
+                <th class="num">{{ "%.1f"|format(advice.totals.shortage) }}</th>
+                <th class="num">{{ "%.0f"|format(advice.totals.short_amt) }}</th>
+                <th class="num">{{ "%.0f"|format(advice.totals.munsiyana) }}</th>
+                <th class="num">{{ "%.0f"|format(advice.totals.tds) }}</th>
+                <th class="num">{{ "%.0f"|format(advice.totals.balance) }}</th>
+                <th></th>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+
+    {% if not advice.rows %}
+    <div class="alert alert-info mb-0">Selected filters ke liye koi work order nahi mila.</div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const accountSelect = document.getElementById('accountSelect');
+    const truckSelect = document.getElementById('truckSelect');
+    const dateSelect = document.getElementById('dateSelect');
+    const selectedTrucks = {{ trucks|tojson }};
+    const selectedDates = {{ dates|tojson }};
+
+    function clean(s) {
+        return (s || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    }
+
+    function loadTrucks() {
+        const account = accountSelect.value;
+        truckSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        dateSelect.innerHTML = '<option value="">-- Truck select karein --</option>';
+        if (!account) {
+            truckSelect.innerHTML = '<option value="">-- Pehle account select karein --</option>';
+            return;
+        }
+        fetch('/reports/api/payment-advice/trucks?account=' + encodeURIComponent(account))
+            .then(r => r.json())
+            .then(data => {
+                const list = data.trucks || [];
+                truckSelect.innerHTML = '';
+                if (!list.length) {
+                    const o = document.createElement('option');
+                    o.value = '';
+                    o.textContent = '-- Is account ke liye koi truck nahi --';
+                    truckSelect.appendChild(o);
+                    return;
+                }
+                list.forEach(t => {
+                    const o = document.createElement('option');
+                    o.value = t;
+                    o.textContent = t;
+                    if (selectedTrucks.some(st => clean(st) === clean(t))) o.selected = true;
+                    truckSelect.appendChild(o);
+                });
+                if (selectedTrucks.length && list.some(t => selectedTrucks.some(st => clean(st) === clean(t)))) {
+                    loadDates();
+                }
+            })
+            .catch(() => {
+                truckSelect.innerHTML = '<option value="">-- Error --</option>';
+            });
+    }
+
+    function loadDates() {
+        const account = accountSelect.value;
+        const trucks = Array.from(truckSelect.selectedOptions).map(o => o.value).filter(Boolean).join(',');
+        dateSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        if (!account || !trucks) {
+            dateSelect.innerHTML = '<option value="">-- Pehle truck select karein --</option>';
+            return;
+        }
+        fetch('/reports/api/payment-advice/dates?account=' + encodeURIComponent(account) + '&trucks=' + encodeURIComponent(trucks))
+            .then(r => r.json())
+            .then(data => {
+                const list = data.dates || [];
+                dateSelect.innerHTML = '';
+                if (!list.length) {
+                    const o = document.createElement('option');
+                    o.value = '';
+                    o.textContent = '-- In trucks ke liye koi date nahi --';
+                    dateSelect.appendChild(o);
+                    return;
+                }
+                list.forEach(d => {
+                    const o = document.createElement('option');
+                    o.value = d;
+                    o.textContent = d;
+                    if (selectedDates.includes(d)) o.selected = true;
+                    dateSelect.appendChild(o);
+                });
+            })
+            .catch(() => {
+                dateSelect.innerHTML = '<option value="">-- Error --</option>';
+            });
+    }
+    window.loadTrucks = loadTrucks;
+    window.loadDates = loadDates;
+
+    window.resetFilters = function () {
+        window.location.href = "{{ url_for('reports.payment_advice') }}";
+    };
+
+    if (accountSelect.value) loadTrucks();
+})();
+</script>
+{% endblock %}

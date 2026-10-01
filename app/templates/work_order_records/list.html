@@ -1,0 +1,213 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-file-earmark-text me-1"></i> Work Orders</h3>
+        <div class="subtitle">
+            {% if mine %}
+                Mine: <strong>{{ mine.name }}</strong>
+                <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-x-circle"></i> Clear Filter</a>
+            {% else %}
+                {{ total_count }} work order{{ 's' if total_count != 1 }} across {{ grouped|length }} mine{{ 's' if grouped|length != 1 }}
+            {% endif %}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="#" onclick="var q=window.location.search;window.location.href=window.location.pathname+(q?q+'&export=xlsx':'?export=xlsx');return false;" class="btn btn-outline-success"><i class="bi bi-file-earmark-spreadsheet me-1"></i> XLSX</a>
+        <a href="{{ url_for('work_order_records.add') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Add Work Order</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+            <label class="form-label mb-0 me-1"><strong>Date:</strong></label>
+            <input type="date" name="date_from" class="form-control form-control-sm" style="width:140px;" value="{{ date_from }}">
+            <span class="text-muted">to</span>
+            <input type="date" name="date_to" class="form-control form-control-sm" style="width:140px;" value="{{ date_to }}">
+            <label class="form-label mb-0 ms-2 me-1"><strong>Truck:</strong></label>
+            <input type="text" name="lorry" class="form-control form-control-sm" style="width:130px;" placeholder="Search truck" value="{{ lorry }}">
+            <label class="form-label mb-0 ms-2 me-1"><strong>Account:</strong></label>
+            <input type="text" name="account" class="form-control form-control-sm" style="width:130px;" placeholder="Search account" value="{{ account }}">
+            <label class="form-label mb-0 ms-2 me-1"><strong>Status:</strong></label>
+            <select name="status" class="form-select form-select-sm" style="width:110px;">
+                <option value="">All</option>
+                <option value="PENDING" {% if status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                <option value="COMPLETED" {% if status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+            <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i></a>
+        </form>
+    </div>
+</div>
+
+<div class="ai-search-wrap mb-3">
+    <div class="d-flex gap-2 align-items-center">
+        <div class="input-group" style="max-width:500px;">
+            <span class="input-group-text bg-transparent" style="border-color:var(--border);"><i class="bi bi-stars text-primary"></i></span>
+            <input type="text" id="aiSearchInput" class="form-control form-control-sm" placeholder='AI Search â€” try: "TRK-01 pending last week" or "Demo Mine balance"...' style="border-color:var(--border);" onkeydown="if(event.key==='Enter'){runAISearch();}">
+            <button class="btn btn-primary btn-sm" type="button" onclick="runAISearch()" id="aiSearchBtn"><i class="bi bi-search"></i></button>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm d-none" type="button" onclick="clearAISearch()" id="aiClearBtn"><i class="bi bi-x-circle me-1"></i>Clear</button>
+    </div>
+    <div id="aiSearchStatus" class="mt-1" style="font-size:0.72rem; color:var(--text-muted);"></div>
+</div>
+
+<div id="aiSearchResults" class="d-none mb-3">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-stars me-1 text-primary"></i> <strong>AI Search Results</strong> <span id="aiResultCount"></span></span>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearAISearch()"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr class="table-secondary">
+                        <th>Date</th>
+                        <th>Truck</th>
+                        <th>WO#</th>
+                        <th>Mine</th>
+                        <th>Account</th>
+                        <th>Freight</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="aiResultBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="normalContent">
+
+{% for group in grouped %}
+<div class="wo-group">
+    <div class="wo-group-header">
+        <div class="wo-group-title">
+            <i class="bi bi-geo-alt-fill"></i>
+            <span>{{ group.mine_name }}</span>
+            {% if group.plant_name %}
+                <span class="wo-group-plant"><i class="bi bi-building me-1"></i>{{ group.plant_name }}</span>
+            {% endif %}
+        </div>
+        <div class="wo-group-count">{{ group.work_orders|length }} trip{{ 's' if group.work_orders|length != 1 }}</div>
+    </div>
+    <div class="wo-list">
+        {% for wo in group.work_orders %}
+        <div class="wo-card">
+            <div class="wo-card-main">
+                <a href="{{ url_for('work_order_records.view', id=wo.id) }}" class="wo-card-num">{{ wo.work_order_number or ('WO-' ~ wo.id) }}</a>
+                <span class="wo-card-date">{{ wo.date|dt }}</span>
+                <span class="badge-status {{ 'completed' if wo.status == 'COMPLETED' else 'pending' }}">{{ wo.status }}</span>
+            </div>
+            <div class="wo-card-actions">
+                <a href="{{ url_for('work_order_records.view', id=wo.id) }}" class="btn btn-sm btn-outline-info" title="View"><i class="bi bi-eye"></i></a>
+                <a href="{{ url_for('work_order_records.edit', id=wo.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteWO({{ wo.id }})"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding:3rem;text-align:center;">
+    <div class="icon"><i class="bi bi-file-earmark-text"></i></div>
+    <div>No work orders found</div>
+</div>
+{% endfor %}
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteWO(id) {
+    if (!confirm('Delete this work order?')) return;
+    fetch('/work-orders/delete/' + id, { method: 'POST' })
+    .then(function() { window.location.reload(); });
+}
+
+function fmtDate(val) {
+    if (!val) return '-';
+    var p = String(val).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : val;
+}
+
+function runAISearch() {
+    var input = document.getElementById('aiSearchInput');
+    var query = input.value.trim();
+    if (!query) return;
+
+    var status = document.getElementById('aiSearchStatus');
+    var resultsDiv = document.getElementById('aiSearchResults');
+    var clearBtn = document.getElementById('aiClearBtn');
+    var searchBtn = document.getElementById('aiSearchBtn');
+
+    status.innerHTML = '<i class="bi bi-hourglass-split"></i> Searching...';
+    searchBtn.disabled = true;
+
+    fetch('{{ url_for("work_order_records.ai_search") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({query: query})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        searchBtn.disabled = false;
+        if (data.error) {
+            status.innerHTML = '<i class="bi bi-exclamation-circle text-warning"></i> ' + data.error;
+            return;
+        }
+
+        var body = document.getElementById('aiResultBody');
+        body.innerHTML = '';
+
+        if (data.results.length === 0) {
+            status.innerHTML = '<i class="bi bi-info-circle"></i> No results found for "' + data.query + '"';
+            resultsDiv.classList.add('d-none');
+            return;
+        }
+
+        status.innerHTML = '<i class="bi bi-check-circle text-success"></i> Found ' + data.count + ' result' + (data.count !== 1 ? 's' : '');
+        document.getElementById('aiResultCount').textContent = '(' + data.count + ')';
+        clearBtn.classList.remove('d-none');
+
+        data.results.forEach(function(wo) {
+            var balClass = wo.balance > 0 ? 'text-warning fw-bold' : 'text-success';
+            var statusBadge = wo.status === 'COMPLETED'
+                ? '<span class="badge bg-success-subtle text-success">COMPLETED</span>'
+                : '<span class="badge bg-warning-subtle text-warning">PENDING</span>';
+
+            body.innerHTML += '<tr>'
+                + '<td>' + fmtDate(wo.date) + '</td>'
+                + '<td><strong>' + wo.lorry_number + '</strong></td>'
+                + '<td>' + (wo.work_order_number || '-') + '</td>'
+                + '<td>' + (wo.mine_name || '-') + '</td>'
+                + '<td>' + (wo.account_name || '-') + '</td>'
+                + '<td>&#8377; ' + wo.total_freight.toLocaleString() + '</td>'
+                + '<td><span class="' + balClass + '">&#8377; ' + wo.balance.toLocaleString() + '</span></td>'
+                + '<td>' + statusBadge + '</td>'
+                + '<td><a href="/work-orders/view/' + wo.id + '" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a></td>'
+                + '</tr>';
+        });
+
+        resultsDiv.classList.remove('d-none');
+    })
+    .catch(function(err) {
+        searchBtn.disabled = false;
+        status.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> Search failed. Try again.';
+    });
+}
+
+function clearAISearch() {
+    document.getElementById('aiSearchResults').classList.add('d-none');
+    document.getElementById('aiResultBody').innerHTML = '';
+    document.getElementById('aiSearchStatus').innerHTML = '';
+    document.getElementById('aiClearBtn').classList.add('d-none');
+    document.getElementById('aiSearchInput').value = '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+# Environment / Secrets
+.env
+
+# Databases
+app/tms.db
+instance/*.db
+*.sqlite
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+vvenv/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Vercel
+.vercel/
+
+# Dev / Test
+tests/
+pytest.ini
+requirements-dev.txt
+
+# Temp / Generated files
+cookies.txt
+sample_import.csv
+migrate_add_work_order_id.py
+tms/
+
+# Tooling / Docs
+.superpowers/
+docs/

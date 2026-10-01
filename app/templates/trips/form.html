@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3>{% if trip %}Edit Trip{% else %}New Trip{% endif %}</h3>
+    <div class="subtitle">{% if trip %}Update trip details{% else %}Register a new lorry trip{% endif %}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-journal me-1"></i> Trip Information</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="date" class="form-control" value="{{ trip.date if trip else '' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Truck Number <span class="text-danger">*</span></label>
+                            <input type="text" name="lorry_number" class="form-control" value="{{ trip.lorry_number if trip else '' }}" placeholder="e.g. KA01AB1234" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Transporter <span class="text-danger">*</span></label>
+                            <select name="transporter_id" class="form-select" required>
+                                <option value="">Select Transporter</option>
+                                {% for tr in transporters %}
+                                <option value="{{ tr.id }}" {% if trip and trip.transporter_id == tr.id %}selected{% endif %}>{{ tr.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Plant <span class="text-danger">*</span></label>
+                            <select name="plant_id" id="plantSelect" class="form-select" required>
+                                <option value="">Select Plant</option>
+                                {% for p in plants %}
+                                <option value="{{ p.id }}" {% if trip and trip.plant_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Mines Name</label>
+                            <select name="mine_id" class="form-select">
+                                <option value="">Select Mine</option>
+                                {% for m in mines %}
+                                <option value="{{ m.id }}" {% if trip and trip.mine_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Mines Qty (Tonnes)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" name="mines_qty" class="form-control" value="{{ trip.mines_qty if trip else '' }}" placeholder="0.00">
+                                <span class="input-group-text">T</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Remark</label>
+                            <textarea name="remarks" class="form-control" rows="1" placeholder="Optional notes">{{ trip.remarks if trip else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save Trip</button>
+                        <a href="{{ url_for('trips.list') }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i> Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('plantSelect').addEventListener('change', function() {
+    var plantId = this.value;
+    var woSelect = document.getElementById('workOrderSelect');
+    var currentVal = woSelect.value;
+    var options = woSelect.querySelectorAll('option[data-plant]');
+    woSelect.innerHTML = '<option value="">Select Work Order</option>';
+    options.forEach(function(opt) {
+        if (!plantId || opt.getAttribute('data-plant') === plantId) {
+            woSelect.appendChild(opt.cloneNode(true));
+        }
+    });
+    if (woSelect.querySelector('option[value="' + currentVal + '"]')) {
+        woSelect.value = currentVal;
+    }
+});
+</script>
+{% endblock %}

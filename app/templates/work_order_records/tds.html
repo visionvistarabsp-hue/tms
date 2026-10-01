@@ -1,0 +1,176 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-percent me-1"></i> TDS</h3>
+        <div class="subtitle">Work orders ka TDS list &mdash; date, truck, account, remark, PAN &amp; TDS amount</div>
+    </div>
+    <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    <a href="{{ url_for('work_order_records.tds_page', date_from=date_from, date_to=date_to, export='xlsx') }}" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-spreadsheet me-1"></i> XLSX</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label"><strong>Date From</strong></label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><strong>Date To</strong></label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i> Filter</button>
+                <a href="{{ url_for('work_order_records.tds_page') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i> Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-table me-1"></i> <strong>TDS Records</strong> &mdash; {{ entries|length }} record(s)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 small align-middle" id="tdsTable">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Payable Date</th>
+                    <th>Date</th>
+                    <th>Truck #</th>
+                    <th>Account Name</th>
+                    <th>Remark</th>
+                    <th>PAN Card</th>
+                    <th class="text-end">Freight</th>
+                    <th class="text-end">TDS %</th>
+                    <th class="text-end">TDS Amount</th>
+                    <th class="text-end">Balance</th>
+                    <th>Status</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in entries %}
+                <tr data-wo-id="{{ e.id }}" data-account-name="{{ e.account_name }}" data-pan="{{ e.pan_card }}">
+                    <td>{{ loop.index }}</td>
+                    <td>{{ e.payable_date|dt if e.payable_date else '-' }}</td>
+                    <td>{{ e.date|dt if e.date else '-' }}</td>
+                    <td>{{ e.lorry_number }}</td>
+                    <td class="account-cell">
+                        <span class="account-view">{{ e.account_name }}</span>
+                        <input type="text" class="account-edit form-control form-control-sm d-none" value="{{ e.account_name == '-' and '' or e.account_name }}" placeholder="Account name">
+                    </td>
+                    <td>
+                        {% if e.tds and e.tds > 0 %}
+                        <span class="badge" style="color:#b91c1c;background:#fee2e2;">NOT DECLARATION</span>
+                        {% else %}
+                        <span class="badge" style="color:#15803d;background:#dcfce7;">DECLARATION</span>
+                        {% endif %}
+                    </td>
+                    <td class="pan-cell">
+                        <span class="pan-view"><code>{{ e.pan_card if e.pan_card else '-' }}</code></span>
+                        <input type="text" class="pan-edit form-control form-control-sm d-none" value="{{ e.pan_card }}" placeholder="e.g. ABCDE1234F" style="text-transform:uppercase;">
+                    </td>
+                    <td class="text-end freight-cell">&#8377; {{ "%.2f"|format(e.freight) }}</td>
+                    <td class="text-end tds-percent-cell">{{ "%.2f"|format(e.tds_percent) }}%</td>
+                    <td class="text-end fw-bold tds-cell">&#8377; {{ "%.2f"|format(e.tds) }}</td>
+                    <td class="text-end balance-cell">&#8377; {{ "%.2f"|format(e.balance) }}</td>
+                    <td>
+                        <span class="badge-status {{ 'completed' if e.status == 'COMPLETED' else 'pending' }}" style="font-size:.65rem;">{{ e.status }}</span>
+                    </td>
+                    <td class="text-center text-nowrap">
+                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1 tds-edit-btn" title="Edit PAN / account name"><i class="bi bi-pencil"></i></button>
+                        <a href="{{ url_for('work_order_records.view', id=e.id) }}" class="btn btn-outline-info btn-sm py-0 px-1" title="View work order"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if entries %}
+            <tfoot>
+                <tr class="table-dark">
+                    <th colspan="7">Total</th>
+                    <th class="text-end" id="totalFreight">&#8377; {{ "%.2f"|format(total_freight) }}</th>
+                    <th></th>
+                    <th class="text-end" id="totalTds">&#8377; {{ "%.2f"|format(total_tds) }}</th>
+                    <th class="text-end" id="totalBalance">&#8377; {{ "%.2f"|format(total_balance) }}</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+    {% if not entries %}
+    <div class="alert alert-info mb-0">No TDS records found for the selected date range.</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const tbody = document.querySelector('#tdsTable tbody');
+
+    function setRowEditing(row, editing) {
+        row.classList.toggle('editing', editing);
+        row.querySelectorAll('.account-view, .pan-view').forEach(el => el.classList.toggle('d-none', editing));
+        row.querySelectorAll('.account-edit, .pan-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        const btn = row.querySelector('.tds-edit-btn');
+        if (btn) {
+            if (editing) {
+                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+            } else {
+                btn.innerHTML = '<i class="bi bi-pencil"></i>';
+                btn.classList.add('btn-outline-primary');
+                btn.classList.remove('btn-success');
+            }
+        }
+        if (editing) {
+            const name = row.querySelector('.account-edit');
+            name.focus();
+            name.select();
+        }
+    }
+
+    tbody.addEventListener('click', function (e) {
+        const btn = e.target.closest('.tds-edit-btn');
+        if (!btn) return;
+        const row = btn.closest('tr');
+        if (!row) return;
+
+        if (row.classList.contains('editing')) {
+            const woId = row.dataset.woId;
+            const name = row.querySelector('.account-edit').value.trim();
+            const pan = row.querySelector('.pan-edit').value.trim().toUpperCase();
+            btn.disabled = true;
+            fetch('/work-orders/tds/edit/' + woId, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({account_name: name, pan_card: pan})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.error || 'Failed');
+                row.dataset.accountName = data.account_name || '';
+                row.dataset.pan = data.pan_card || '';
+                row.querySelector('.account-view').textContent = data.account_name || '-';
+                row.querySelector('.pan-view').innerHTML = data.pan_card ? '<code>' + data.pan_card + '</code>' : '-';
+                row.querySelector('.account-edit').value = data.account_name || '';
+                row.querySelector('.pan-edit').value = data.pan_card || '';
+                setRowEditing(row, false);
+            })
+            .catch(err => {
+                showToast(String(err.message || err), 'danger');
+            })
+            .finally(() => { btn.disabled = false; });
+        } else {
+            setRowEditing(row, true);
+        }
+    });
+})();
+</script>
+{% endblock %}

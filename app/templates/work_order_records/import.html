@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-upload me-1"></i> Import Work Orders</h3>
+        <div class="subtitle">Upload a CSV file and map columns to import</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        {% if ai_mappings %}
+            <a href="#" onclick="resetAIMappings(); return false;" class="text-primary small text-decoration-none"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset AI</a>
+        {% endif %}
+        {% if current_wo %}
+        <a href="{{ url_for('work_order_records.view', id=current_wo.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back to WO</a>
+        {% else %}
+        <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if current_wo %}
+<div class="alert alert-info py-2 mb-3">
+    <i class="bi bi-info-circle me-1"></i> Importing into <strong>WO {{ current_wo.work_order_number }}</strong>
+</div>
+{% endif %}
+
+{% if not src_headers %}
+<div class="card">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
+            {% if current_wo %}<input type="hidden" name="wo_id" value="{{ current_wo.id }}">{% endif %}
+            <div class="col-md-6">
+                <label class="form-label"><strong>Upload CSV File</strong></label>
+                <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required>
+                <div class="form-text">Upload a .csv or .xlsx file. First row should be column headers. Supported: Date, Truck#, TDS, Rate, Qty, etc.</div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-eye me-1"></i> Preview & Map</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% else %}
+<form method="POST" action="{{ url_for('work_order_records.import_execute') }}">
+    {% if current_wo %}<input type="hidden" name="wo_id" value="{{ current_wo.id }}">{% endif %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="bi bi-columns-gap me-1"></i> <strong>Column Mapping</strong> — {{ total_rows }} row(s) detected</span>
+            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Import {{ total_rows }} rows?')"><i class="bi bi-check-lg me-1"></i> Import Now</button>
+        </div>
+        {% if raw_data %}
+        {% for row_idx in range(1, raw_data|length) %}
+        {% for col_idx in range(raw_data[row_idx]|length) %}
+        <input type="hidden" name="data_{{ row_idx }}_{{ col_idx }}" value="{{ raw_data[row_idx][col_idx] }}">
+        {% endfor %}
+        {% endfor %}
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr class="table-secondary">
+                        <th style="width:40px;">#</th>
+                        <th>CSV Column</th>
+                        <th>Sample</th>
+                        <th>Maps To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col_idx in range(src_headers|length) %}
+                    <tr>
+                        <td class="text-muted">{{ loop.index }}</td>
+                        <td><strong>{{ src_headers[col_idx] }}</strong></td>
+                        <td class="text-muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {% if preview_rows and preview_rows[0] and col_idx < preview_rows[0]|length %}
+                                {{ preview_rows[0][col_idx] }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select name="map_{{ col_idx }}" class="form-select form-select-sm" style="max-width:240px;">
+                                <option value="">— Skip —</option>
+                                {% for fkey, flabel, ftype in fields %}
+                                <option value="{{ fkey }}"
+                                    data-type="{{ ftype }}"
+                                    {% set h = src_headers[col_idx]|lower %}
+                                    {% if fkey|lower == h or flabel|lower == h %}selected{% endif %}
+                                    {% if ai_mappings.get(col_idx|string) == fkey %}selected data-ai-suggested="true"{% endif %}
+                                >{{ flabel }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-table me-1"></i> <strong>Preview Data</strong></div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr class="table-secondary">
+                        {% for h in src_headers %}
+                        <th>{{ h }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function resetAIMappings() {
+    document.querySelectorAll('select[name^="map_"]').forEach(function(sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].dataset.aiSuggested === 'true') {
+                sel.selectedIndex = 0;
+                break;
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3><i class="bi bi-bar-chart me-1"></i> Reports</h3>
+    <div class="subtitle">View and export operational summaries</div>
+</div>
+
+<div class="row g-4 mt-2">
+    <div class="col-md-3">
+        <a href="{{ url_for('reports.payment_advice') }}" class="text-decoration-none">
+            <div class="report-card">
+                <div class="icon"><i class="bi bi-receipt"></i></div>
+                <h5>Payment Advice</h5>
+                <p>Account-wise bill / advice with truck lookup &amp; print</p>
+                <span class="btn btn-primary btn-sm mt-2">Generate Advice</span>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

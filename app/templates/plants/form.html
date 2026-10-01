@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3>{% if plant %}Edit Plant{% else %}Add Plant{% endif %}</h3>
+    <div class="subtitle">{% if plant %}Update plant details{% else %}Register a new plant location{% endif %}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-building me-1"></i> Plant Details</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Plant Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ plant.name if plant else '' }}" placeholder="e.g. Peenya Plant" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="location" class="form-control" value="{{ plant.location if plant else '' }}" placeholder="e.g. Peenya Industrial Area">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save</button>
+                        <a href="{{ url_for('plants.list') }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i> Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

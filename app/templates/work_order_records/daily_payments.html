@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center no-print">
+    <div>
+        <h3><i class="bi bi-currency-rupee me-1"></i> Daily Payments</h3>
+        <div class="subtitle">Work order select karo &mdash; data autofill hoga, payment date &amp; amount daal kar balance update karo</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+            <i class="bi bi-plus-circle me-1"></i> New (Custom) Payment
+        </button>
+        <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    </div>
+</div>
+
+<div class="card mb-3 border-primary no-print">
+    <div class="card-header bg-primary text-white py-2">
+        <i class="bi bi-cash-stack me-1"></i> <strong>Make a Payment (select Plant &rarr; Mine &rarr; Work Order)</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label"><strong>Plant</strong></label>
+                <select id="payPlant" class="form-select form-select-sm">
+                    <option value="">-- Select Plant --</option>
+                    {% for p in plants %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><strong>Mine</strong></label>
+                <select id="payMine" class="form-select form-select-sm">
+                    <option value="">-- Select Mine --</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><strong>Work Order</strong></label>
+                <select id="payWO" class="form-select form-select-sm">
+                    <option value="">-- Select Work Order --</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="button" id="resetPick" class="btn btn-outline-secondary btn-sm flex-fill" title="Clear all"><i class="bi bi-x-circle me-1"></i> Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3 no-print">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-table me-1"></i> <strong>Selected Work Orders</strong></span>
+        <span>
+            <button type="button" id="payAllBtn" class="btn btn-success btn-sm" disabled>
+                <i class="bi bi-check-lg me-1"></i> Pay Selected
+            </button>
+            <button type="button" id="clearRowsBtn" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash me-1"></i> Clear Rows
+            </button>
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle mb-0" id="payTable">
+            <thead class="excel-total-row">
+                <tr>
+                    <th style="width:36px;"></th>
+                    <th style="min-width:90px;">Date</th>
+                    <th style="min-width:110px;">Truck #</th>
+                    <th style="min-width:130px;">Account Name</th>
+                    <th class="text-end" style="min-width:75px;">Plant Qty</th>
+                    <th class="text-end" style="min-width:75px;">Mine Qty</th>
+                    <th class="text-end" style="min-width:85px;">Freight</th>
+                    <th style="min-width:150px;">Payable Date</th>
+                    <th class="text-end" style="min-width:85px;">Balance</th>
+                    <th style="min-width:90px;">Status</th>
+                    <th style="width:36px;"></th>
+                </tr>
+            </thead>
+            <tbody id="payTableBody"></tbody>
+            <tfoot class="excel-total-row">
+                <tr>
+                    <th colspan="2">TOTAL</th>
+                    <th></th>
+                    <th></th>
+                    <th class="text-end" id="totPlantQty">-</th>
+                    <th class="text-end" id="totMineQty">-</th>
+                    <th class="text-end" id="totFreight">-</th>
+                    <th></th>
+                    <th class="text-end" id="totBalance">-</th>
+                    <th colspan="2"></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="card-body py-2 small text-muted">
+        <i class="bi bi-info-circle me-1"></i> Work Order select karo, row me <strong>Payable Date</strong> daalo, phir <strong>Pay Selected</strong> dabao &mdash; payment registered hoga, balance me koi change nahi.
+    </div>
+</div>
+
+<hr class="my-4 no-print">
+
+<div class="card mb-3 no-print">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label"><strong>Date From</strong></label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><strong>Date To</strong></label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i> Filter</button>
+                <a href="{{ url_for('work_order_records.daily_payments') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i> Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if account_groups %}
+<div class="card mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-table me-1"></i> <strong>Work Orders List</strong> &mdash; {{ account_groups|length }} account(s)</span>
+        <span class="d-flex gap-2">
+            <a href="{{ url_for('work_order_records.daily_payments', date_from=date_from, date_to=date_to, export='xlsx') }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i> XLSX</a>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        </span>
+    </div>
+</div>
+
+{% for account_name in sorted_account_names %}
+<div class="card mb-4">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light">
+        <span class="fw-bold text-primary"><i class="bi bi-person me-1"></i> {{ account_name }} &mdash; {{ account_groups[account_name]|length }} record(s)</span>
+        <span class="d-flex align-items-center flex-wrap gap-2">
+            <span class="fw-bold">Total: &#8377;{{ "%.2f"|format(account_totals[account_name]) }}</span>
+            <span class="d-flex gap-1">
+                <a href="{{ url_for('work_order_records.daily_payments', date_from=date_from, date_to=date_to, export='xlsx', account_name=account_name) }}" class="btn btn-outline-success btn-sm py-0 px-1" title="Export {{ account_name }} XLSX"><i class="bi bi-file-earmark-spreadsheet"></i></a>
+                <a href="{{ url_for('work_order_records.daily_payments', date_from=date_from, date_to=date_to, export='pdf', account_name=account_name) }}" class="btn btn-outline-danger btn-sm py-0 px-1" title="Export {{ account_name }} PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+            </span>
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 small align-middle" id="listTable-{{ loop.index }}">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>WO</th>
+                    <th>Date</th>
+                    <th>Lorry</th>
+                    <th>Account Name</th>
+                    <th>Plant</th>
+                    <th>Mine</th>
+                    <th class="text-end">Balance</th>
+                    <th style="min-width:150px;">Payable Date</th>
+                    <th style="min-width:70px;" class="no-print"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in account_groups[account_name] %}
+                <tr data-list-wo="{{ e.id }}">
+                    <td>{{ loop.index }}</td>
+                    <td><a href="{{ url_for('work_order_records.view', id=e.id) }}">{{ e.work_order_number }}</a></td>
+                    <td>{{ e.date|dt if e.date else '-' }}</td>
+                    <td>{{ e.lorry_number }}</td>
+                    <td>{{ e.account_name }}</td>
+                    <td>{{ e.plant_name }}</td>
+                    <td>{{ e.mine_name }}</td>
+                    <td class="text-end fw-bold list-bal-cell">{{ "%.2f"|format(e.balance) }}</td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm payable-date-input" data-wo-id="{{ e.id }}" data-wo-date="{{ e.date }}" value="{{ e.payable_date }}" {% if e.payable_date %}disabled{% endif %} style="min-width:140px;">
+                    </td>
+                    <td class="text-nowrap no-print">
+                        <button class="btn btn-success btn-sm py-0 px-2 list-pay-btn" data-wo-id="{{ e.id }}" title="Pay"><i class="bi bi-check-lg"></i></button>
+                        <a href="{{ url_for('work_order_records.view', id=e.id) }}" class="btn btn-outline-primary btn-sm py-0 px-1" title="View/Edit"><i class="bi bi-pencil-square"></i></a>
+                        <form method="POST" action="{{ url_for('work_order_records.delete', id=e.id) }}" class="d-inline" onsubmit="return confirm('Delete this payment entry?')">
+                            <input type="hidden" name="redirect" value="daily-payments">
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-dark">
+                    <th colspan="7">{{ account_name }} Total</th>
+                    <th class="text-end" id="listGrandBal-{{ loop.index }}">{{ "%.2f"|format(account_totals[account_name]) }}</th>
+                    <th colspan="2"></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="alert alert-info mb-0">No records found for the selected date range.</div>
+{% endif %}
+
+<div class="modal fade" id="addPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="POST" action="/work-orders/daily-payments/add">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i> New Payment Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="date" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Lorry Number <span class="text-danger">*</span></label>
+                            <input type="text" name="lorry_number" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Account Name</label>
+                            <input type="text" name="account_name" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Mine</label>
+                            <select name="mine_id" class="form-select form-select-sm">
+                                <option value="">-- Select --</option>
+                                {% for m in mines %}
+                                <option value="{{ m.id }}">{{ m.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Remark</label>
+                            <input type="text" name="remark" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                    <hr>
+                    <h6 class="fw-bold">Amounts (&#8377;)</h6>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label small">Freight</label>
+                            <input type="number" step="0.01" name="total_freight" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Cash</label>
+                            <input type="number" step="0.01" name="cash" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Loading</label>
+                            <input type="number" step="0.01" name="loading" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Advance</label>
+                            <input type="number" step="0.01" name="total_advance" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Shortage (ton)</label>
+                            <input type="number" step="0.01" name="shortage" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Short Amt</label>
+                            <input type="number" step="0.01" name="short_amt" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Munsiyana</label>
+                            <input type="number" step="0.01" name="munsiyana" class="form-control form-control-sm" value="300">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">TDS</label>
+                            <input type="number" step="0.01" name="tds" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">DD TDS From</label>
+                            <input type="date" name="ddtds_from" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">DD TDS To</label>
+                            <input type="date" name="ddtds_to" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Account Adv</label>
+                            <input type="number" step="0.01" name="account_advance" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Petrol</label>
+                            <input type="number" step="0.01" name="petrol" class="form-control form-control-sm" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Petrol Station</label>
+                            <input type="text" name="petrol_name" class="form-control form-control-sm" placeholder="Station name">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const payPlant = document.getElementById('payPlant');
+    const payMine = document.getElementById('payMine');
+    const payWO = document.getElementById('payWO');
+    const tbody = document.getElementById('payTableBody');
+
+    function fmt(n) { return (parseFloat(n)||0).toLocaleString('en-IN', {maximumFractionDigits: 0}); }
+    function cell(num) { return '<td class="text-end">' + (num === '-' ? '-' : fmt(num)) + '</td>'; }
+    function isPaid(row) { return row.getAttribute('data-paid') === '1'; }
+
+    function updateTotals() {
+        let p = 0, m = 0, f = 0, b = 0;
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(r => {
+            p += parseFloat(r.getAttribute('data-plant') || 0);
+            m += parseFloat(r.getAttribute('data-mine') || 0);
+            f += parseFloat(r.getAttribute('data-freight') || 0);
+            b += parseFloat(r.getAttribute('data-balance') || 0);
+        });
+        document.getElementById('totPlantQty').textContent = fmt(p);
+        document.getElementById('totMineQty').textContent = fmt(m);
+        document.getElementById('totFreight').textContent = fmt(f);
+        document.getElementById('totBalance').textContent = fmt(b);
+        document.getElementById('payAllBtn').disabled = rows.length === 0;
+    }
+
+    payPlant.addEventListener('change', function() {
+        const pid = payPlant.value;
+        payMine.innerHTML = '<option value="">-- Select Mine --</option>';
+        payWO.innerHTML = '<option value="">-- Select Work Order --</option>';
+        if (!pid) return;
+        fetch('/work-orders/daily-payments/api/mines?plant_id=' + pid)
+            .then(r => r.json())
+            .then(list => {
+                payMine.innerHTML = '<option value="">-- Select Mine --</option>' +
+                    list.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('');
+            });
+    });
+
+    payMine.addEventListener('change', function() {
+        const mid = payMine.value;
+        payWO.innerHTML = '<option value="">-- Select Work Order --</option>';
+        if (!mid) return;
+        fetch('/work-orders/daily-payments/api/work-orders?mine_id=' + mid)
+            .then(r => r.json())
+            .then(list => {
+                payWO.innerHTML = '<option value="">-- Select Work Order --</option>' +
+                    list.map(w => '<option value="' + w.id + '">' +
+                        (w.work_order_number || ('WO ' + w.id)) + ' | ' + w.lorry_number + ' | ' +
+                        w.date + ' | Bal: ' + fmt(w.balance) + '</option>').join('');
+            });
+    });
+
+    function addRow(w) {
+        if (tbody.querySelector('tr[data-id="' + w.id + '"]')) { alert('Ye work order pehle se add hai.'); return; }
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', w.id);
+        tr.setAttribute('data-plant', w.plant_qty || 0);
+        tr.setAttribute('data-mine', w.mines_qty || 0);
+        tr.setAttribute('data-freight', w.total_freight || 0);
+        tr.setAttribute('data-balance', w.balance || 0);
+        tr.innerHTML =
+            '<td class="text-center"><input type="checkbox" class="form-check-input row-sel" checked></td>' +
+            '<td>' + w.date + '</td>' +
+            '<td class="fw-bold">' + w.lorry_number + '</td>' +
+            '<td>' + (w.account_name || '-') + '</td>' +
+            cell(w.plant_qty) +
+            cell(w.mines_qty) +
+            cell(w.total_freight) +
+            '<td><input type="date" class="form-control form-control-sm pay-date" value="' + (w.payable_date || '') + '"' + (w.payable_date ? ' disabled' : '') + ' style="min-width:130px;"></td>' +
+            '<td class="text-end fw-bold bal-cell">' + fmt(w.balance) + '</td>' +
+            '<td class="status-cell">' + w.status + '</td>' +
+            '<td class="text-center"><button class="btn btn-outline-danger btn-sm py-0 px-1 rm-btn" title="Remove">&#10005;</button></td>';
+        tbody.appendChild(tr);
+        updateTotals();
+    }
+
+    payWO.addEventListener('change', function() {
+        if (payWO.value) {
+            const wid = payWO.value;
+            fetch('/work-orders/daily-payments/api/work-orders?mine_id=' + payMine.value)
+                .then(r => r.json())
+                .then(list => {
+                    const w = list.find(x => x.id == wid);
+                    if (!w) { alert('Work order nahi mila'); return; }
+                    addRow(w);
+                })
+                .finally(function() { payWO.value = ''; });
+        }
+    });
+
+    tbody.addEventListener('input', function(e) {});
+
+    tbody.addEventListener('change', function(e) {
+        if (!e.target) return;
+        if (e.target.classList.contains('rm-btn')) return;
+    });
+
+    tbody.addEventListener('click', function(e) {
+        const btn = e.target.closest('.rm-btn');
+        if (btn) { btn.closest('tr').remove(); updateTotals(); }
+    });
+
+    document.getElementById('clearRowsBtn').addEventListener('click', function() {
+        if (!tbody.children.length) return;
+        if (confirm('Saari rows remove karni hain?')) { tbody.innerHTML = ''; updateTotals(); }
+    });
+
+    document.getElementById('resetPick').addEventListener('click', function() {
+        payPlant.value = '';
+        payMine.innerHTML = '<option value="">-- Select Mine --</option>';
+        payWO.innerHTML = '<option value="">-- Select Work Order --</option>';
+    });
+
+    async function payRow(tr) {
+        if (isPaid(tr)) return { done: false, row: tr, ok: true, msg: 'Already paid' };
+        const id = tr.getAttribute('data-id');
+        const dateInput = tr.querySelector('.pay-date');
+        const payment_date = dateInput.value || new Date().toISOString().slice(0, 10);
+        try {
+            const resp = await fetch('/work-orders/daily-payments/save-payment/confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({work_order_id: id, payment_date: payment_date})
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                tr.setAttribute('data-balance', data.balance);
+                tr.querySelector('.bal-cell').textContent = fmt(data.balance);
+                tr.querySelector('.status-cell').textContent = data.status;
+                tr.querySelector('.pay-date').disabled = true;
+                tr.setAttribute('data-paid', '1');
+                const cb = tr.querySelector('.row-sel');
+                if (cb) cb.checked = false;
+                return { done: true, row: tr, ok: true, msg: data.status };
+            }
+            return { done: false, row: tr, ok: false, msg: data.error || 'Save failed' };
+        } catch (e) {
+            return { done: false, row: tr, ok: false, msg: 'Network error' };
+        }
+    }
+
+    document.getElementById('payAllBtn').addEventListener('click', async function() {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (!rows.length) { alert('Table me rows nahi hain.'); return; }
+        let done = 0, errors = 0, msgs = [];
+        for (const tr of rows) {
+            const r = await payRow(tr);
+            if (r.done) done++;
+            else if (!r.ok) { errors++; msgs.push(r.msg); }
+        }
+        updateTotals();
+        alert('Payments done: ' + done + (errors ? ', errors: ' + errors + ' - ' + msgs.join('; ') : ''));
+    });
+
+    document.querySelectorAll('[id^="listTable-"]').forEach(function(tbl) {
+        const grandId = tbl.id.replace('listTable', 'listGrandBal');
+        const el = document.getElementById(grandId);
+        if (el) el.textContent = fmt2(el.textContent);
+        tbl.querySelectorAll('.list-bal-cell').forEach(function(c) {
+            if (c.textContent.trim() === '0.00' || c.textContent.trim() === '0') {
+                c.textContent = '0';
+            }
+        });
+    });
+
+    function fmt2(n) { return parseFloat(String(n).replace(/,/g, '')) || 0; }
+
+    document.querySelectorAll('.list-pay-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-wo-id');
+            const tr = btn.closest('tr');
+            const dateInput = tr.querySelector('.payable-date-input');
+            const payment_date = dateInput.value;
+            if (!payment_date) { alert('Pehle Payable Date daalo.'); return; }
+            savePayable(id, payment_date);
+        });
+    });
+
+    document.querySelectorAll('.payable-date-input').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+            const id = inp.getAttribute('data-wo-id');
+            if (!inp.value) return;
+            savePayable(id, inp.value);
+        });
+    });
+
+    function savePayable(id, payment_date) {
+        fetch('/work-orders/daily-payments/save-payment/confirm', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({work_order_id: id, payment_date: payment_date})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const tr = document.querySelector('tr[data-list-wo="' + id + '"]');
+                if (tr) {
+                    const inp = tr.querySelector('.payable-date-input');
+                    const btn = tr.querySelector('.list-pay-btn');
+                    inp.disabled = true;
+                    if (btn) { btn.classList.remove('btn-success'); btn.classList.add('btn-outline-success'); btn.disabled = true; }
+                }
+                alert('Payable Date saved.');
+            } else {
+                alert(data.error || 'Save failed');
+            }
+        })
+        .catch(function() { alert('Network error'); });
+    }
+
+    function updateListGrand() {
+        document.querySelectorAll('tr[data-list-wo]').forEach(function(tr) {});
+    }
+})();
+</script>
+{% endblock %}

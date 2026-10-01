@@ -1,0 +1,113 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-pencil-square me-1"></i> Bulk Edit Work Orders</h3>
+        <div class="subtitle">Update a field across multiple work orders at once</div>
+    </div>
+    <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+            <label class="form-label mb-0 me-1"><strong>Mine:</strong></label>
+            <select name="mine_id" class="form-select form-select-sm" style="width:150px;">
+                <option value="">All Mines</option>
+                {% for m in mines %}
+                <option value="{{ m.id }}" {% if mine_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+            <label class="form-label mb-0 me-1"><strong>Date:</strong></label>
+            <input type="date" name="date_from" class="form-control form-control-sm" style="width:130px;" value="{{ date_from }}">
+            <span class="text-muted">to</span>
+            <input type="date" name="date_to" class="form-control form-control-sm" style="width:130px;" value="{{ date_to }}">
+            <label class="form-label mb-0 me-1"><strong>Status:</strong></label>
+            <select name="status" class="form-select form-select-sm" style="width:100px;">
+                <option value="">All</option>
+                <option value="PENDING" {% if status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                <option value="COMPLETED" {% if status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+        </form>
+    </div>
+</div>
+
+<form method="POST" id="bulkForm">
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-list-check me-1"></i> Select Work Orders</span>
+        <div class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0"><strong>Field to edit:</strong></label>
+            <select name="field" class="form-select form-select-sm" style="width:140px;" required>
+                <option value="">-- Select --</option>
+                {% for key, label in editable_fields.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <label class="form-label mb-0"><strong>New value:</strong></label>
+            <input type="text" name="value" class="form-control form-control-sm" style="width:120px;" placeholder="Value" required>
+            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Update selected work orders?')"><i class="bi bi-check-lg"></i> Apply</button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div style="max-height:500px;overflow-y:auto;">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th style="width:40px;"><input type="checkbox" id="selectAll" onchange="document.querySelectorAll('.wo-check').forEach(c=>c.checked=this.checked)"></th>
+                    <th>#</th>
+                    <th>WO #</th>
+                    <th>Date</th>
+                    <th>Truck</th>
+                    <th>Mine</th>
+                    <th>TDS</th>
+                    <th>DD TDS From</th>
+                    <th>DD TDS To</th>
+                    <th>Acc Adv</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
+                    <th>Freight</th>
+                    <th>Cash</th>
+                    <th>Loading</th>
+                    <th>Advance</th>
+                    <th>Short Amt</th>
+                    <th>Munsiyana</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wo in work_orders %}
+                <tr>
+                    <td><input type="checkbox" name="wo_ids[]" value="{{ wo.id }}" class="wo-check"></td>
+                    <td class="text-muted">{{ loop.index }}</td>
+                    <td><strong>{{ wo.work_order_number or wo.id }}</strong></td>
+                    <td>{{ wo.date|dt }}</td>
+                    <td>{{ wo.lorry_number }}</td>
+                    <td>{{ wo.mine.name if wo.mine else '-' }}</td>
+                    <td>{{ "%.0f"|format(wo.tds) }}</td>
+                    <td>{{ wo.ddtds_from|dt if wo.ddtds_from else '-' }}</td>
+                    <td>{{ wo.ddtds_to|dt if wo.ddtds_to else '-' }}</td>
+                    <td>{{ "%.0f"|format(wo.account_advance) }}</td>
+                    <td>{{ "%.1f"|format(wo.mines_qty) if wo.mines_qty else '-' }}</td>
+                    <td>{{ "%.0f"|format(wo.rate) }}</td>
+                    <td>{{ "%.0f"|format(wo.total_freight) }}</td>
+                    <td>{{ "%.0f"|format(wo.cash) }}</td>
+                    <td>{{ "%.0f"|format(wo.loading) }}</td>
+                    <td>{{ "%.0f"|format(wo.total_advance) }}</td>
+                    <td>{{ "%.0f"|format(wo.short_amt) }}</td>
+                    <td>{{ "%.0f"|format(wo.munsiyana) }}</td>
+                    <td>{{ "%.0f"|format(wo.balance) }}</td>
+                    <td><span class="badge-status {{ 'completed' if wo.status == 'COMPLETED' else 'pending' }}" style="font-size:.65rem;">{{ wo.status }}</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="19" class="empty-state">No work orders found</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

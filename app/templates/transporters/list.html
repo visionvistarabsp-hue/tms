@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-people me-1"></i> Master</h3>
+        <div class="subtitle">Manage accounts: name, PAN &amp; associated truck numbers (ek account ke multiple trucks)</div>
+    </div>
+    <a href="{{ url_for('transporters.add') }}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i> Add Account</a>
+</div>
+
+<div class="filter-card">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col flex-grow-1">
+            <label class="form-label small mb-1">Search</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search by account name or truck number..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i> Search</button>
+        </div>
+    </form>
+</div>
+<div class="table-wrap">
+    <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Account Name</th>
+                        <th>PAN Card</th>
+                        <th>Truck Number(s)</th>
+                        <th>Contact</th>
+                        <th class="no-print text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transporters %}
+                    <tr>
+                        <td class="text-muted">{{ t.id }}</td>
+                        <td><strong>{{ t.name }}</strong></td>
+                        <td><code>{{ t.pan_card or '-' }}</code></td>
+                        <td>
+                            {% if t.trucks %}
+                            {% for truck in t.trucks %}
+                            <span class="badge bg-secondary">{{ truck.lorry_number }}</span>
+                            {% endfor %}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ t.contact or '-' }}</td>
+                        <td class="no-print text-end">
+                            <div class="action-group justify-content-end">
+                                <a href="{{ url_for('transporters.edit', id=t.id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <form method="POST" action="{{ url_for('transporters.delete', id=t.id) }}" style="display:inline;" onsubmit="return confirm('Delete this account?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="empty-state"><div class="icon"><i class="bi bi-people"></i></div>No accounts found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+</div>
+
+{% include "_pagination.html" %}
+{% endblock %}

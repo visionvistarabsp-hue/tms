@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-people me-1"></i> Transporter-wise Report</h3>
+        <div class="subtitle">Consolidated financial summary by transporter</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.transporter_wise', export='xlsx') }}" class="btn btn-primary"><i class="bi bi-download me-1"></i> Export XLSX</a>
+        <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+                <thead>
+                    <tr>
+                        <th>Transporter</th>
+                        <th class="text-end">Trips</th>
+                        <th class="text-end">Freight</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Expense</th>
+                        <th class="text-end">TDS</th>
+                        <th class="text-end">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in data %}
+                    <tr>
+                        <td><strong>{{ d.transporter }}</strong></td>
+                        <td class="text-end">{{ d.trip_count }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(d.total_freight) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(d.total_paid) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(d.total_expense) }}</td>
+                        <td class="text-end">&#8377; {{ "%.2f"|format(d.total_tds) }}</td>
+                        <td class="text-end"><strong>&#8377; {{ "%.2f"|format(d.total_balance) }}</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="empty-state"><div class="icon"><i class="bi bi-people"></i></div>No data found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+</div>
+{% endblock %}

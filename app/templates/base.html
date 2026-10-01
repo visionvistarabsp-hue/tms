@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TMS Transport{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="bi bi-truck-front me-1"></i> <span>TMS</span> Transport
+        </div>
+        <nav class="sidebar-nav">
+            <a class="side-link {{ 'active' if request.endpoint == 'main.dashboard' }}" href="{{ url_for('main.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'plants.list' }}" href="{{ url_for('plants.list') }}"><i class="bi bi-building"></i> Plants</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'mines.list' }}" href="{{ url_for('mines.list') }}"><i class="bi bi-geo-alt"></i> Mines</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'work_order_records.work_orders' }}" href="{{ url_for('work_order_records.work_orders') }}"><i class="bi bi-file-earmark-text"></i> Work Orders</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'transporters.list' }}" href="{{ url_for('transporters.list') }}"><i class="bi bi-people"></i> Master</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'work_order_records.daily_payments' }}" href="{{ url_for('work_order_records.daily_payments') }}"><i class="bi bi-currency-rupee"></i> Daily Payment</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'work_order_records.tds_page' }}" href="{{ url_for('work_order_records.tds_page') }}"><i class="bi bi-percent"></i> TDS</a>
+            <a class="side-link {{ 'active' if request.endpoint == 'reports.index' }}" href="{{ url_for('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
+        </nav>
+        <div class="sidebar-footer">
+            <span class="sidebar-user"><i class="bi bi-person-circle me-1"></i> {{ current_user.username }}</span>
+            <a class="side-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
+    <div class="app-main">
+        <header class="topbar">
+            <button class="btn btn-icon d-lg-none" onclick="document.getElementById('sidebar').classList.toggle('open')" title="Menu"><i class="bi bi-list"></i></button>
+            <div class="topbar-title">
+                <h1>{{ self.title() }}</h1>
+            </div>
+            <div class="topbar-actions">
+            </div>
+        </header>
+        <main class="content">
+            {{ self.content() }}
+        </main>
+    </div>
+</div>
+{% else %}
+<main class="content login-main">
+    {{ self.content() }}
+</main>
+{% endif %}
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+function showToast(message, category) {
+    var icon = 'info-circle';
+    if (category === 'success') icon = 'check-circle';
+    else if (category === 'danger') icon = 'exclamation-circle';
+    else if (category === 'warning') icon = 'exclamation-triangle';
+
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast-notification toast-' + category;
+    toast.innerHTML = '<i class="bi bi-' + icon + ' toast-icon"></i>' +
+        '<span>' + message + '</span>' +
+        '<button class="toast-close" onclick="this.parentElement.remove()">&times;</button>';
+
+    container.appendChild(toast);
+    setTimeout(function () {
+        toast.style.animation = 'slideOut .3s ease forwards';
+        setTimeout(function () { toast.remove(); }, 300);
+    }, 4000);
+}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+document.addEventListener('DOMContentLoaded', function () {
+    {% for category, message in messages %}
+    showToast('{{ message|e }}', '{{ category }}');
+    {% endfor %}
+});
+{% endif %}
+{% endwith %}
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

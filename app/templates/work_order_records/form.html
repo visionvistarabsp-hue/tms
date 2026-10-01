@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3>{% if work_order %}Edit Work Order{% else %}Add Work Order{% endif %}</h3>
+    <div class="subtitle">{% if work_order %}Update work order record{% else %}Allocate a new work order{% endif %}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-file-earmark-text me-1"></i> Work Order</div>
+            <div class="card-body">
+                <form method="POST" id="workOrderForm">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Work Order Number <span class="text-danger">*</span></label>
+                            <input type="text" name="work_order_number" class="form-control" value="{{ work_order.work_order_number if work_order else '' }}" placeholder="Enter your own number e.g. A-101" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Allocate to Mine <span class="text-danger">*</span></label>
+                            <select name="mine_id" class="form-select" required>
+                                <option value="">-- Select Mine --</option>
+                                {% for m in mines %}
+                                <option value="{{ m.id }}" {% if work_order and work_order.mine_id == m.id %}selected{% endif %}{% if not work_order and default_mine_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save</button>
+                        <a href="{{ url_for('work_order_records.work_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i> Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Migrate
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+Werkzeug
+requests
+openpyxl
+reportlab

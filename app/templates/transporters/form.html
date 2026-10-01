@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h3>{% if transporter %}Edit Account{% else %}Add Account{% endif %}</h3>
+    <div class="subtitle">{% if transporter %}Update account details &amp; truck numbers{% else %}Register a new account with its trucks{% endif %}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person me-1"></i> Account Details</div>
+            <div class="card-body">
+                <form method="POST" id="masterForm">
+                    {% if return_to %}<input type="hidden" name="next" value="{{ return_to }}">{% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Account Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ transporter.name if transporter else prefill_name }}" placeholder="e.g. Ravi Transport" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">PAN Card Number</label>
+                        <input type="text" name="pan_card" class="form-control" value="{{ transporter.pan_card if transporter else '' }}" placeholder="e.g. ABCDE1234F" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase();">
+                        <div class="form-text">Is account se associated PAN number</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Truck Number(s)</label>
+                        <div id="truckList">
+                            {% if transporter and transporter.trucks %}
+                            {% for tr in transporter.trucks %}
+                            <div class="input-group mb-2 truck-row">
+                                <span class="input-group-text"><i class="bi bi-truck"></i></span>
+                                <input type="text" name="truck_{{ loop.index }}" class="form-control" value="{{ tr.lorry_number }}" placeholder="e.g. KA01AB1234">
+                                <button type="button" class="btn btn-outline-danger remove-truck"><i class="bi bi-x"></i></button>
+                            </div>
+                            {% endfor %}
+                            {% elif prefill_truck %}
+                            <div class="input-group mb-2 truck-row">
+                                <span class="input-group-text"><i class="bi bi-truck"></i></span>
+                                <input type="text" name="truck_1" class="form-control" value="{{ prefill_truck }}" placeholder="e.g. KA01AB1234">
+                                <button type="button" class="btn btn-outline-danger remove-truck"><i class="bi bi-x"></i></button>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div id="truckListEmpty" class="text-muted small mb-2" {% if (transporter and transporter.trucks) or prefill_truck %}style="display:none;"{% endif %}>No trucks added yet.</div>
+                        <button type="button" id="addTruckBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg me-1"></i> Add Truck Number</button>
+                        <div class="form-text">Ek account me multiple trucks add kar sakte ho.</div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Contact</label>
+                        <input type="text" name="contact" class="form-control" value="{{ transporter.contact if transporter else '' }}" placeholder="e.g. 9876543210">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save</button>
+                        <a href="{{ url_for('transporters.list') }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i> Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var truckList = document.getElementById('truckList');
+    var emptyMsg = document.getElementById('truckListEmpty');
+    var counter = {{ (transporter.trucks|length + 1) if transporter and transporter.trucks else (2 if prefill_truck else 1) }};
+
+    function updateEmpty() {
+        var rows = truckList.querySelectorAll('.truck-row').length;
+        emptyMsg.style.display = rows ? 'none' : '';
+    }
+
+    function addRow(value) {
+        counter++;
+        var div = document.createElement('div');
+        div.className = 'input-group mb-2 truck-row';
+        div.innerHTML =
+            '<span class="input-group-text"><i class="bi bi-truck"></i></span>' +
+            '<input type="text" name="truck_' + counter + '" class="form-control" value="' + (value || '') + '" placeholder="e.g. KA01AB1234">' +
+            '<button type="button" class="btn btn-outline-danger remove-truck"><i class="bi bi-x"></i></button>';
+        truckList.appendChild(div);
+        updateEmpty();
+    }
+
+    document.getElementById('addTruckBtn').addEventListener('click', function () { addRow(''); });
+
+    truckList.addEventListener('click', function (e) {
+        if (e.target.closest('.remove-truck')) {
+            e.target.closest('.truck-row').remove();
+            updateEmpty();
+        }
+    });
+
+    updateEmpty();
+})();
+</script>
+{% endblock %}
