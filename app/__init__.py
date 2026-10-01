@@ -21,20 +21,26 @@ def create_app():
         opts["creator"] = make_pg_creator()
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = opts
 
-        with app.app_context():
-            if not postgres_reachable(app.config["SQLALCHEMY_DATABASE_URI"]):
-                app.logger.warning(
-                    "Neon Postgres unreachable. Falling back to local SQLite (instance/tms.db)."
-                )
-                db_path = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "..",
-                    "instance",
-                    "tms.db",
-                ).replace("\\", "/")
-                os.makedirs(os.path.dirname(db_path), exist_ok=True)
-                app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
-                app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
+        # The SQLite fallback is a local-dev convenience only. On Vercel the
+        # bundle is read-only and the filesystem is ephemeral, so a fallback DB
+        # can neither be written nor persist across cold starts. Skip the
+        # reachability probe entirely there and let real connection errors
+        # surface instead of silently serving an empty database.
+        if not os.getenv("VERCEL"):
+            with app.app_context():
+                if not postgres_reachable(app.config["SQLALCHEMY_DATABASE_URI"]):
+                    app.logger.warning(
+                        "Neon Postgres unreachable. Falling back to local SQLite (instance/tms.db)."
+                    )
+                    db_path = os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)),
+                        "..",
+                        "instance",
+                        "tms.db",
+                    ).replace("\\", "/")
+                    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
+                    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
 
     db.init_app(app)
     login_manager.init_app(app)
