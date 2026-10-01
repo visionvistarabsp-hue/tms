@@ -27,12 +27,30 @@ def normalize_db_url(url):
     return urlunsplit((PG_DIALECT, parts.netloc, parts.path, parts.query, parts.fragment))
 
 
+def libpq_dsn(url):
+    """Strip SQLAlchemy's "+driver" dialect suffix for direct psycopg.connect().
+
+    SQLAlchemy resolves "postgresql+psycopg://" to the psycopg3 dialect, but the
+    DBAPI itself parses conninfo and has no concept of a driver suffix -- it
+    rejects the whole URL as an invalid option. Raw connections need the plain
+    libpq form ("postgresql://"), keeping any query string such as sslmode.
+    """
+    if not _is_postgres(url):
+        return url
+    parts = urlsplit(url)
+    if "+" not in parts.scheme:
+        return url
+    return urlunsplit(
+        (parts.scheme.split("+", 1)[0], parts.netloc, parts.path, parts.query, parts.fragment)
+    )
+
+
 def make_pg_creator(url=None):
     """Return a pooled-connection creator that retries transient
     DNS/network failures (e.g. Neon pooler host flapping) up to 5 times."""
     import psycopg
 
-    url = normalize_db_url(url or os.getenv("DATABASE_URL", ""))
+    url = libpq_dsn(normalize_db_url(url or os.getenv("DATABASE_URL", "")))
     attempts = 5
     backoff_secs = [0.5, 1, 2, 3, 3]
 
@@ -53,7 +71,7 @@ def postgres_reachable(url=None, retries=3):
     """Quick startup check: can we actually open a Postgres connect?"""
     import psycopg
 
-    url = normalize_db_url(url or os.getenv("DATABASE_URL", ""))
+    url = libpq_dsn(normalize_db_url(url or os.getenv("DATABASE_URL", "")))
     if not _is_postgres(url):
         return True
     for i in range(retries):
