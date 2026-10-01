@@ -721,6 +721,10 @@ def autosave(id):
     if field not in editable:
         return jsonify({"ok": False, "error": f"Field '{field}' not editable"}), 400
 
+    # Text fields backed by a NOT NULL column; blanking them would raise
+    # NotNullViolation on flush.
+    NOT_NULL_TEXT_FIELDS = {"lorry_number", "status"}
+
     try:
         ftype = editable[field]
         if ftype == "date":
@@ -733,7 +737,15 @@ def autosave(id):
         elif ftype == "select":
             setattr(wo, field, int(value) if value else None)
         else:
-            setattr(wo, field, str(value).strip() if value else None)
+            cleaned = str(value).strip() if value is not None else ""
+            # Columns like lorry_number are NOT NULL: clearing the input must not
+            # write NULL. Reject the edit instead of failing at commit time.
+            if not cleaned and field in NOT_NULL_TEXT_FIELDS:
+                return jsonify({
+                    "ok": False,
+                    "error": f"{field.replace('_', ' ').title()} is required and cannot be cleared",
+                }), 400
+            setattr(wo, field, cleaned or None)
 
         # Handle TDS: manual override or auto-recalculate
         if field == "tds":
@@ -774,8 +786,11 @@ def autosave(id):
             } for f in family] if family else None,
         })
     except Exception as e:
-        print(f"[AUTOSAVE] ERROR WO#{wo.id if 'wo' in dir() else id} field={field} error={e}")
+        # wo may be expired or the session may already be poisoned by a failed
+        # flush, so never touch ORM attributes here -- read the id we captured
+        # above instead, or the real error gets masked by PendingRollbackError.
         db.session.rollback()
+        print(f"[AUTOSAVE] ERROR WO#{wo_id} field={field} error={type(e).__name__}: {e}")
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
